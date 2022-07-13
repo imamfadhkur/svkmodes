@@ -1,8 +1,6 @@
 # importing library
 from ast import While
-from itertools import combinations
 from traceback import print_tb
-from typing import Tuple
 import xlrd, re, numpy as np, string, xlsxwriter, xlwt, sys
 
 class SVKModes:
@@ -104,6 +102,7 @@ class SVKModes:
         set_valued_modes_Q = {}
         for m in range(len(self.X.get(1))):             # looping sebanyak fitur yang ada
             for cluster in X:                           # untuk me looping tiap cluster 
+                print("\n")
                 # proses menambahkan keyword pada variabel vj
                 vj = {}                                 # untuk menyimpan keyword sebagai key nya, dan nilai frekuensi dari keyword sebagai value nya
                 Q = []
@@ -116,7 +115,7 @@ class SVKModes:
                     temp = 0                # variabel semenara untuk menyimpan nilai frekuensi 
                     for obj in cluster:     # looping tiap object yang ada pada cluster, yang tujuannya digunakan untuk menghitung frekuensi probabilitas yang dihitungnya adalah antara keyword vj nya, dan dengan keywords dari object
                         if key in self.X.get(obj)[m]:           # untuk melakukan pengecekan jika keyword termasuk subset dari object, maka operasinya adalah len keyword dibagi len keywords nya object
-                            temp += len(key.split(","))/len(self.X.get(obj)[m])   # langkah terakhir dalam mencari frekuensi probabilitas
+                            temp += 1/len(self.X.get(obj)[m])   # langkah terakhir dalam mencari frekuensi probabilitas
                     vj[key] = temp/len(cluster)                 # memasukkan nilai frekuensi probabilitas kedalam dict yang key nya adalah keyword
                 x = dict(sorted(vj.items(), key=lambda item: item[1], reverse=True))    # proses mengurutkan vj berdasarkan values nya
                 vj_sort = list(x.keys())          # mengambil key nya saja yang mana telah diurutkan by value
@@ -125,14 +124,14 @@ class SVKModes:
                 for obj in cluster:                             # me-looping semua object yang ada pada cluster
                     r += len(self.X.get(obj)[m])/len(cluster)   # menghitung nilai r, yaitu dengan menghitung penjumlahan dari banyaknya keyword yang ada pada suatu object dibagi banyaknya object
                 r = round(r)                    # me-round nilai r, dimana round yaitu membulatkan ke bawah apabila dibawah 0.5, dan dibulatkan keatas apabila nilai lebih dari atau sama dengan 0.5
-                # print("r:",r)
-                # print("vj:",vj)
-                # print("vj sort:",vj_sort)
+                print("r:",r)
+                print("vj:",vj)
+                print("vj sort:",vj_sort)
                 kwsv = [k for k,v in vj.items() if v == x.get(vj_sort[r-1])]
-                # print("keys with same value by r:",kwsv)
-                if r < 1:                      # untuk memfilter apabila terdapat nilai r yang tidak diharapkan
+                print("keys with same value by r:",kwsv)
+                if r == 0:                      # untuk memfilter apabila terdapat nilai r yang tidak diharapkan
                     print("cluster:",cluster)   # untuk mencetak di cluster mana dan apa membernya
-                    print("ERROR, r lebih kecil dari 1")
+                    print("error r = 0")
                     exit()
                 elif r == 1:
                     Q.append(vj_sort[0])        # untuk menambahkan nilai Q
@@ -160,62 +159,14 @@ class SVKModes:
                 # proses masuk langkah 8
                 else:
                     print("masuk langkah 8")
-                    # print("vj:",vj)
-                    # print("vj_sort:",vj_sort)
-                    # print("keys with same value by r:",kwsv)
-                    # print("r =",r,"->",vj_sort[r-1])
-                    # 8.1
-                    Q_aksen = vj_sort[0:r-1]
-                    # print("keywords before r-p'-1:",Q_aksen)
-                    # 8.2
-                    P_aksen = r-1-(len(Q_aksen))
-                    # print("P aksen",P_aksen)
-                    kombinasi = combinations(kwsv,(P_aksen+1))
-                    kombinasi_dan_Q_aksen = {}
-                    kombinasi_copy = []
-                    for item_komb in kombinasi:
-                        kombinasi_copy.append(list(item_komb))
-                        # print("item komb",list(item_komb))
-                    # 8.3
-                        for item_Q in Q_aksen:
-                            temp = list(item_komb)
-                            temp.append(item_Q)
-                            # print("temp",tuple(temp))
-                            kombinasi_dan_Q_aksen[tuple(temp)] = 0
-                    # print(kombinasi_dan_Q_aksen)
-                    # 8.4
-                    # print("cluster",cluster)
-                    for itemK in kombinasi_dan_Q_aksen:
-                        L_itemK = list(itemK)
-                        temp = 0
-                        for obj in cluster:
-                            # print(L_itemK,"|",self.X.get(obj)[m])
-                            if all(item in self.X.get(obj)[m] for item in L_itemK):
-                                # print("masuk sini")
-                                temp += len(L_itemK)/len(self.X.get(obj)[m])
-                        kombinasi_dan_Q_aksen[itemK] = temp/len(cluster)
-                    # print("kombinasi_dan_Q_aksen:",kombinasi_dan_Q_aksen)
-                    f_kom = {}
-                    # print("kombinasi kopi:",kombinasi_copy)
-                    f_terbesar = []
-                    for item in kombinasi_copy:
-                        temp = 0
-                        for itemQ in Q_aksen:
-                            item_temp = item.copy()
-                            item_temp.append(itemQ)
-                            temp += kombinasi_dan_Q_aksen[tuple(item_temp)]
-                        # print(item,"|",temp)
-                        f_terbesar.append(temp)
-                    # print(kombinasi_copy)
-                    # print(f_terbesar)
-                    # print(kombinasi_copy[f_terbesar.index(max(f_terbesar))])
-                    temp = kombinasi_copy[f_terbesar.index(max(f_terbesar))]
-                    temp.extend(Q_aksen)
-                    Q.extend(temp)
+                    print("vj",vj)
+                    print("keys with same value by r:",kwsv)
+                    print("r =",r,". ->",vj_sort[r-1])
+                    print("p':",vj_sort.index(vj_sort[r-1])-1)
+                    print("r-p'-1:",r-(vj_sort.index(vj_sort[r-1])-1)-1)
+                    exit()
                 # batas proses langkah 8
-                print("Q",Q)
-                set_valued_modes_Q[tuple(cluster)] = Q
-        return set_valued_modes_Q
+                print("Q: ",Q)
 
     # METODE CLUSTERING SV-K-MODES NYA
     def clustering(self,centers,max_iter):              # membutuhkan centers untuk proses didalamnya
@@ -234,9 +185,6 @@ class SVKModes:
                 temp[pembanding].append(i+1)    # maka value yang berbentuk list tersebut akan ditambahkan sebuah object
         # proses mengisikan variabel utama center_and_member, yang berisi centers sebagai key, valuenya temp sebagai value pada center_and_member
         keys = list(temp.keys())                # mengambil key dari variabel temp
-        # print("keys:",keys)
-        # print("temp:",temp)
-        # print("list val:",list([temp[i] for i in keys]))
         self.centers_and_member[tuple(centers)] = list([temp[i] for i in keys])     # proses pengisian center_and_member, key nya adalah centers dan value nya adalah semua value yang ada pada variabel temp
         # proses awal membuat matriks Q yang mana elemen nya adalah nilai dm dari masing-masing centroid kepada setiap object
         matriksQ = []                               # variabel yang digunakan untuk menyimpan matriks Q, variabel ini akan bertype 2 dimensi
@@ -254,12 +202,9 @@ class SVKModes:
         # PROSES UNTUK ITERASI KEDUA DAN SETERUSNYA
         if max_iter > 1:                        # pemfilteran pertama untuk looping, jika looping nya lebih dari satu kali maka akan di looping dengan melakukan proses yang ada dibawah nya
             for iter in range(max_iter-1):      # looping sebanyak jumlah iterasi, dikurangi 1 karena iterasi pertama telah dilakukan di sebelum proses ini
-                print("==================================\nITERASI KE-",iter)       # untuk keterangan iterasi ke berapa
+                print("iterasi ke-",iter)       # untuk keterangan iterasi ke berapa
                 values = list(self.centers_and_member.values())     # mengambil values nya saja
-                print(self.centers_and_member)
-                Q_update = self.hafsm(values[len(values)-1])                   # memanggil method hafsm untuk mencari update centroid berdasarkan tiap cluster
-                print("Q update:",Q_update)
-            print("==================================")
+                self.hafsm(values[len(values)-1])                   # memanggil method hafsm untuk mencari update centroid berdasarkan tiap cluster
 
 
         # KETIKA SUDAH SELESAI PADA ITERASI TERAKHIR, MAKA DATA TERAKHIR PADA PROPERTI CENTER_AND_MEMBER ADALAH HASIL CLUSTERING YANG SUDAH KONVERGEN
@@ -281,7 +226,7 @@ class SVKModes:
         clustering_svkmodes = self.clustering(initial_cluster_center,max_iter)
         return clustering_svkmodes
 
-nama_file = "write_datav2-langkah7.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
+nama_file = "write_datav2-langkah8.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
 jumlah_cluster = 3                          # variabel untuk menampung jumlah cluster 
 data = SVKModes(nama_file,jumlah_cluster)   # inisialisasi awal dengan membawa informasi nama file, dan jumlah cluster
 max_iter = 2
