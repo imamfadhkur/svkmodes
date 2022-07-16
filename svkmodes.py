@@ -36,6 +36,7 @@ class SVKModes:
         
     def calc_and_save_dm(self,Xm):                      # fungsi yang digunakan untuk menghitung dan menyimpan dm
         Dm_dens = {}                                    # membuat variabel kosongan untuk menyimpan nilai Dm yang dikali dengan dens dari cluster tertentu kepada semua item. perlu di ketahui bahwa untuk mencari centroid yang diperlukan ialah dm*dens, dm != dm*dens
+        # print("semua DM:",self.semua_dm)
         if type(Xm) != list:                            # untuk mengecek apakah Xm (centroid) bukan list, karena jika berbentuk list yaitu berarti centroid nya bukan lah object yang ada, melainkan object baru yang hanya berisi keyword
             for i in self.X.keys():                     # loop sebanyak objeknya
                 dmd = 0                                 # membuat variabel kosongan untuk menyimpan nilai dm dari masing-masing fitur (dissimiliarity measure)
@@ -51,9 +52,13 @@ class SVKModes:
                 for m in range(len(self.X.get(1))):     # untuk melooping tiap fitur yang ada
                     irisan_vasxi = np.intersect1d(Xm, self.X.get(i)[m])    # mencari irisan antara centroid dengan fitur pada objek ke-i
                     gabungan_vasxi = np.union1d(Xm, self.X.get(i)[m])      # mencari gabungan antara centroid dengan fitur pada objek ke-i
+                    # print(irisan_vasxi,"||",gabungan_vasxi)
+                    # print(1-(len(irisan_vasxi)/len(gabungan_vasxi)))
+                    # exit()
                     dmd += 1-(len(irisan_vasxi)/len(gabungan_vasxi))       # penggabungan semua nilai dissimiliarity measure dari semua fitur
-                Dm_dens[Xm,i] = dmd*self.dens.get(i)                       # menyimpan nilai dissimiliarity measure pada variabel Dm
-                self.semua_dm[Xm,i] = dmd                                  # menyimpan informasi Dm ke properti penampung utama, yaitu semua_dm yang digunakan untuk menyimpan semua dm dari tiap centroid ke tiap object
+                # print(tuple((tuple(Xm),i)),"|",i)
+                Dm_dens[(tuple(Xm),i)] = dmd*self.dens.get(i)                       # menyimpan nilai dissimiliarity measure pada variabel Dm
+                self.semua_dm[(tuple(Xm),i)] = dmd                                  # menyimpan informasi Dm ke properti penampung utama, yaitu semua_dm yang digunakan untuk menyimpan semua dm dari tiap centroid ke tiap object
         return Dm_dens                                                     # mengembalikan nilai Dm, tujuan dari fungsi ini yaitu digunakan untuk mengembalikan nilai berupa dictionary yang berisi key nya yaitu centroid dan semua object, dan value nya yaitu berisi hasil perhitungan (nilai Dm dari tiap centroid terhadap object)
     
     # METODE UNTUK MENCARI INITIAL CLUSTER CENTER
@@ -102,8 +107,11 @@ class SVKModes:
     # METODE YANG DIGUNAKAN UNTUK MENCARI UPDATE CLUSTER CENTER BARU
     def hafsm(self,X):                                  # parameter inputan X merupakan himpunan cluster dan membernya, misal X = [[1, 2, 3, 4], [5, 7, 8], [6, 9]], X[0][0] merupakan member cluster pertama
         set_valued_modes_Q = {}
+        cluster_ke = 1
         for m in range(len(self.X.get(1))):             # looping sebanyak fitur yang ada
             for cluster in X:                           # untuk me looping tiap cluster 
+                # print("cluster ke:",cluster_ke)
+                cluster_ke += 1
                 # proses menambahkan keyword pada variabel vj
                 vj = {}                                 # untuk menyimpan keyword sebagai key nya, dan nilai frekuensi dari keyword sebagai value nya
                 Q = []
@@ -125,8 +133,9 @@ class SVKModes:
                 for obj in cluster:                             # me-looping semua object yang ada pada cluster
                     r += len(self.X.get(obj)[m])/len(cluster)   # menghitung nilai r, yaitu dengan menghitung penjumlahan dari banyaknya keyword yang ada pada suatu object dibagi banyaknya object
                 r = round(r)                    # me-round nilai r, dimana round yaitu membulatkan ke bawah apabila dibawah 0.5, dan dibulatkan keatas apabila nilai lebih dari atau sama dengan 0.5
-                # print("r:",r)
                 # print("vj:",vj)
+                # print("x:",x)
+                # print("r:",r)
                 # print("vj sort:",vj_sort)
                 kwsv = [k for k,v in vj.items() if v == x.get(vj_sort[r-1])]
                 # print("keys with same value by r:",kwsv)
@@ -136,14 +145,14 @@ class SVKModes:
                     exit()
                 elif r == 1:
                     Q.append(vj_sort[0])        # untuk menambahkan nilai Q
-                    print("masuk langkah 5")
+                    # print("masuk langkah 5")
                 elif r > 1 and x.get(vj_sort[r-1]) > x.get(vj_sort[r]):   # nilai r dikurangi satu karena dalam program ini membacanya berdasarkan index, sedangkan dalam contoh perhitungan manual nilai r di baca berdasarkan urutan, bukan secara index
-                    Q.append(vj_sort[r-1])
-                    print("masuk langkah 6")
+                    Q.extend(vj_sort[0:r])
+                    # print("masuk langkah 6")
                 
                 # awal proses langkah 7
                 elif r > 1 and x.get(vj_sort[0]) >= x.get(vj_sort[1]) >= x.get(vj_sort[r-2]) > x.get(vj_sort[r-1]) == x.get(vj_sort[r]) > x.get(vj_sort[r+1]) >= x.get(vj_sort[len(vj_sort)-1]) : # langkah 7 pada algoritma HAFSM
-                    print("masuk langkah 7")
+                    # print("masuk langkah 7")
                     Q.append(vj_sort[0])
                     Qrj = 0
                     for rj in range(r-2):               # min 2 karena 1 dihitung berdasarkan index sedangkan r nya tidak menghitung berdasarkan index, dan 1 nya karena dari rumus dikurangi 1
@@ -159,25 +168,25 @@ class SVKModes:
                 
                 # proses masuk langkah 8
                 else:
-                    print("masuk langkah 8")
+                    # print("masuk langkah 8")
                     # print("vj:",vj)
                     # print("vj_sort:",vj_sort)
                     # print("keys with same value by r:",kwsv)
                     # print("r =",r,"->",vj_sort[r-1])
                     # 8.1
-                    Q_aksen = vj_sort[0:r-1]
+                    Q_aksen = vj_sort[0:r-1]                    # untuk mengambil semua keyword sebelum r-p'-1
                     # print("keywords before r-p'-1:",Q_aksen)
                     # 8.2
-                    P_aksen = r-1-(len(Q_aksen))
+                    P_aksen = r-1-(len(Q_aksen))                # untuk mencari nilai p', yaitu dengan rumus r-p'-1 = |Q'|
                     # print("P aksen",P_aksen)
-                    kombinasi = combinations(kwsv,(P_aksen+1))
-                    kombinasi_dan_Q_aksen = {}
-                    kombinasi_copy = []
-                    for item_komb in kombinasi:
-                        kombinasi_copy.append(list(item_komb))
-                        # print("item komb",list(item_komb))
+                    kombinasi = combinations(kwsv,(P_aksen+1))  # untuk membuat kombinasi dari sebuah list, parameter kedua yaitu banyaknya item pada tiap kombinasi
+                    kombinasi_dan_Q_aksen = {}                  # variable yang digunakan untuk menampung data kombinasi yang digabungkan dengan Q'
+                    kombinasi_copy = []                         # variable yang digunakan untuk menyimpan data (meng-copy) kombinasi
+                    for item_komb in kombinasi:                 # perulangan untuk memproses tiap kombinasi
+                        kombinasi_copy.append(list(item_komb))  # menyalin data item kombinasi kedalam variable kombinasi_copy
+                        # print("item komb:",list(item_komb))
                     # 8.3
-                        for item_Q in Q_aksen:
+                        for item_Q in Q_aksen:                  # 
                             temp = list(item_komb)
                             temp.append(item_Q)
                             # print("temp",tuple(temp))
@@ -213,12 +222,13 @@ class SVKModes:
                     temp.extend(Q_aksen)
                     Q.extend(temp)
                 # batas proses langkah 8
-                print("Q",Q)
+                # print("Q",Q)
                 set_valued_modes_Q[tuple(cluster)] = Q
         return set_valued_modes_Q
 
     # METODE CLUSTERING SV-K-MODES NYA
     def clustering(self,centers,max_iter):              # membutuhkan centers untuk proses didalamnya
+        # print("centers",centers)
         matriksW = np.zeros((len(centers),len(self.X))) # membentuk matriks numpy yang berukuran sama dengan matriks W (simbol-simbol atau notasi yang digunakan mempunyai rujukan, yaitu dari skripsi imam)
         temp = {}                                       # ex: {0: [1, 2, 3, 4], 1: [5, 7, 8], 2: [6, 9]} --> variabel sementara yang digunakan untuk menyimpan member cluster, key nya merupakan cluster, value nya merupakan object
         for i in range(len(self.X)):                    # looping sebanyak objek
@@ -233,7 +243,8 @@ class SVKModes:
             else:                               # jika variabel temp dengan key "pembanding" sudah ada isinya, sudah ada value nya, 
                 temp[pembanding].append(i+1)    # maka value yang berbentuk list tersebut akan ditambahkan sebuah object
         # proses mengisikan variabel utama center_and_member, yang berisi centers sebagai key, valuenya temp sebagai value pada center_and_member
-        keys = list(temp.keys())                # mengambil key dari variabel temp
+        keys = sorted(list(temp.keys()))                # mengambil key dari variabel temp
+        # print("matriksW:",matriksW)
         # print("keys:",keys)
         # print("temp:",temp)
         # print("list val:",list([temp[i] for i in keys]))
@@ -246,20 +257,94 @@ class SVKModes:
                 temp.append(self.semua_dm.get((centers[jml_cluster],item+1)))       # proses pemanggilan nilai dm dari variabel utama (self.semua_dm) untuk ditambahkan kedalam variabel temp
             matriksQ.append(temp)                   # menambahkan data dm semua object terhadap satu centroid kedalam variabel matriks Q
         matriksQ = matriksW*(np.array(matriksQ))    # setelah selesai proses pembuatan matriks Q nya, langsung mengalikan tiap element matriks Q dengan matriks W
-        F_aksen = np.sum(matriksQ)                  # pada baris ini melakukan penjumlahan pada tiap cell dari matriks
-        # print(self.X)
+        F_aksen_before = np.sum(matriksQ)                  # pada baris ini melakukan penjumlahan pada tiap cell dari matriks
+        print(matriksW,"|",matriksQ)
+        print(F_aksen_before)
         # print(self.centers_and_member)
         # exit()
+        print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ITERASI KE- 1","~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       # untuk keterangan iterasi ke berapa
+        print(self.centers_and_member)
 
         # PROSES UNTUK ITERASI KEDUA DAN SETERUSNYA
         if max_iter > 1:                        # pemfilteran pertama untuk looping, jika looping nya lebih dari satu kali maka akan di looping dengan melakukan proses yang ada dibawah nya
-            for iter in range(max_iter-1):      # looping sebanyak jumlah iterasi, dikurangi 1 karena iterasi pertama telah dilakukan di sebelum proses ini
-                print("==================================\nITERASI KE-",iter)       # untuk keterangan iterasi ke berapa
+            iter = 1
+            konvergen = False
+            while(konvergen is False and iter < max_iter):
+            # for iter in range(max_iter-1):      # looping sebanyak jumlah iterasi, dikurangi 1 karena iterasi pertama telah dilakukan di sebelum proses ini
+                iter += 1
+                print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ITERASI KE-",iter,"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       # untuk keterangan iterasi ke berapa
                 values = list(self.centers_and_member.values())     # mengambil values nya saja
-                print(self.centers_and_member)
-                Q_update = self.hafsm(values[len(values)-1])                   # memanggil method hafsm untuk mencari update centroid berdasarkan tiap cluster
-                print("Q update:",Q_update)
-            print("==================================")
+                center_update = self.hafsm(values[len(values)-1])                   # memanggil method hafsm untuk mencari update centroid berdasarkan tiap cluster
+                print("centers update:",center_update)
+                centroid = list(center_update.values())
+                matriksQ = []                               # variabel yang digunakan untuk menyimpan matriks Q, variabel ini akan bertype 2 dimensi
+                for item in centroid:
+                    self.calc_and_save_dm(item)
+                    temp = []                               # variabel sementara untuk menyimpan nilai dm dari tiap object terhadap satu centroid
+                    # proses perulangan untuk membentuk matriks Q
+                    for item_obj in range(len(self.X)):         # looping sebanyak object yang ada
+                        temp.append(self.semua_dm.get((tuple(item),item_obj+1)))       # proses pemanggilan nilai dm dari variabel utama (self.semua_dm) untuk ditambahkan kedalam variabel temp
+                    matriksQ.append(temp)                   # menambahkan data dm semua object terhadap satu centroid kedalam variabel matriks Q
+                    # batas proses perulangan untuk membentuk matriks Q
+                # print(matriksQ)
+                F = matriksW*(np.array(matriksQ))
+                F_aksen_after = np.sum(F)
+                print(matriksW,"\n(atas)<-W | Q->(bawah)\n",np.array(matriksQ))
+                print("W*Q:",F)
+                print("F after:",F_aksen_after,"|","F before:",F_aksen_before)
+                # F_aksen_after = 0
+                # F_aksen_before = 0
+                if F_aksen_before == F_aksen_after:
+                    konvergen = True
+                else:
+                    # masuk langkah 3
+                    # print("masuk else")
+                    matriksW = np.zeros((len(centroid),len(self.X))) # membentuk matriks numpy yang berukuran sama dengan matriks W (simbol-simbol atau notasi yang digunakan mempunyai rujukan, yaitu dari skripsi imam)
+                    temp = {}                                       # ex: {0: [1, 2, 3, 4], 1: [5, 7, 8], 2: [6, 9]} --> variabel sementara yang digunakan untuk menyimpan member cluster, key nya merupakan cluster, value nya merupakan object
+                    for i in range(len(self.X)):                    # looping sebanyak objek
+                        pembanding = 0                              # variabel yang digunakan untuk menyimpan info bahwa suatu object dia berada pada cluster mana gitu
+                        # print("centroid:",centroid)
+                        center_tuple = []
+                        for k in centroid:
+                            center_tuple.append(tuple(k))
+                        center_tuple = tuple(center_tuple)
+                        for Xm in range(len(centroid)-1):            # loop dikurangi 1 karena didalam loop membandingkan object saat ini dengan object selanjutnya, jika tidak dikurangi 1 maka disaat membandingkan dengan "object selanjutnya" akan error out of range
+                            # print(self.semua_dm.get((center_tuple[Xm+1],i+1)),"<",self.semua_dm.get((center_tuple[pembanding],i+1)))
+                            if self.semua_dm.get((center_tuple[Xm+1],i+1)) < self.semua_dm.get((center_tuple[pembanding],i+1)):   # membandingkan nilai dm dari object sekarang (pembanding, yang menyimpan info dia pada cluster mana) dengan object selanjutnya (center Xm+1)
+                                pembanding = Xm+1           # ini akan terjadi manabila object center xm+1 nilai dm nya lebih kecil dari center pembanding, maka center pembanding di update nilai nya menjadi center xm+1, karena untuk mencari suatu object dia terletak jaraknya paling dekat yang mana kedalam cluster nya
+                        matriksW[pembanding][i] = 1         # proses mengisi element matriks menjadi 1, karena telah dicari object tersebut berada pada cluster berapa (pada variabel pembanding)
+                        # proses pembuatan member cluster yaitu dengan sistem list dalam list, adapun list utama sebagai value dari dictionary, didalamnya terdapat list yang mana list tersebut merupakan cluster, anggota list tersebut merupakan object.
+                        if temp.get(pembanding) == None:    # jika variabel temp dengan key "pembanding" masih belum ada isinya,
+                            temp[pembanding] = [i+1]        # maka variabel temp dengan key "pembanding" akan diisi sebuah data yang dibentuk type data list
+                        else:                               # jika variabel temp dengan key "pembanding" sudah ada isinya, sudah ada value nya, 
+                            temp[pembanding].append(i+1)    # maka value yang berbentuk list tersebut akan ditambahkan sebuah object
+                    # proses mengisikan variabel utama center_and_member, yang berisi centers sebagai key, valuenya temp sebagai value pada center_and_member
+                    keys = sorted(list(temp.keys()))                # mengambil key dari variabel temp
+                    # print("matriksW:",matriksW)
+                    # print("keys:",keys)
+                    # print("temp:",temp)
+                    # print("list val:",list([temp[i] for i in keys]))
+                    # print("centers:",tuple(centers))
+                    # print("centroid:",tuple(centroid))
+                    # print("temp:",temp)
+                    # print("keys:",keys)
+                    # exit()
+                    # self.centers_and_member[tuple(centroid)] = list([temp[i] for i in keys])     # proses pengisian center_and_member, key nya adalah centers dan value nya adalah semua value yang ada pada variabel temp
+                    center_tuple = []
+                    for k in centroid:
+                        center_tuple.append(tuple(k))
+                    center_tuple = tuple(center_tuple)
+                    self.centers_and_member[center_tuple] = list([temp[i] for i in keys])     # proses pengisian center_and_member, key nya adalah centers dan value nya adalah semua value yang ada pada variabel temp
+                    F_aksen_before = F_aksen_after
+                    F = matriksW*(np.array(matriksQ))
+                    F_aksen_after = np.sum(F)
+                    print(matriksW,"\n<-W | Q->\n",np.array(matriksQ))
+                    print("W*Q:",F)
+                    print("F after:",F_aksen_after,"|","F before:",F_aksen_before)
+                    if F_aksen_before == F_aksen_after:
+                        konvergen = True
+                # exit()
+            print("===============================================================================")
 
 
         # KETIKA SUDAH SELESAI PADA ITERASI TERAKHIR, MAKA DATA TERAKHIR PADA PROPERTI CENTER_AND_MEMBER ADALAH HASIL CLUSTERING YANG SUDAH KONVERGEN
@@ -274,14 +359,14 @@ class SVKModes:
         ab = list(values)
         # return "SV-K-Modes:",ab[len(ab)-1]
         # return self.centers_and_member
-        return "SV-K-Modes:",F_aksen,max_iter
+        return "SV-K-Modes:",self.centers_and_member,"|",F_aksen_before,"|",iter
 
     def run(self,max_iter):                                  # main metode untuk mengeksekusi antar metode
         initial_cluster_center = self.gicca()       # variabel fiturs merupakan list berbentuk 3 dimensi, dengan isi yaitu fitur. k merupakan variabel untuk menampung jumlah cluster
         clustering_svkmodes = self.clustering(initial_cluster_center,max_iter)
         return clustering_svkmodes
 
-nama_file = "write_datav2-langkah7.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
+nama_file = "write_datav2-langkah8-3key.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
 jumlah_cluster = 3                          # variabel untuk menampung jumlah cluster 
 data = SVKModes(nama_file,jumlah_cluster)   # inisialisasi awal dengan membawa informasi nama file, dan jumlah cluster
 max_iter = 2

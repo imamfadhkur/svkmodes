@@ -1,0 +1,31 @@
+Qaj = Qs union Q'
+Q' = ekonomi
+Qs = kombinasi Qj 
+
+A = {ekonomi, web, timun, (moneter, mikro, manusia,) salmon}
+r = 5 => {mikro}
+8.1) Q' = {ekonomi, web, timun} 
+8.2) r-p'-1 = |{ekonomi, web, timun}| => 5-p'-1 = 3 => p' = 1
+buat kombinasi dari keyword yang memiliki f yg sama dengan keyword ke-r => (moneter, mikro, manusia,)
+- (moneter, mikro)
+- (moneter, manusia)
+- (mikro, manusia)
+8.3) f(Qs)
+pertama:
+- (moneter, mikro, ekonomi)
+- (moneter, mikro, web)
+- (moneter, mikro, timun)
+- (moneter, manusia, ekonomi)
+- (moneter, manusia, web)
+- (moneter, manusia, timun)
+- (mikro, manusia, ekonomi)
+- (mikro, manusia, web)
+- (mikro, manusia, timun)
+kedua: (8.4)
+- f(moneter, mikro, ekonomi) + f(moneter, mikro, web) + f(moneter, mikro, timun)
+- f(moneter, manusia, ekonomi) + f(moneter, manusia, web) + f(moneter, manusia, timun)
+- f(mikro, manusia, ekonomi) + f(mikro, manusia, web) + f(mikro, manusia, timun)
+ketiga: (8.5 -> pilih salah satu dari Langkah 8.4 yang memiliki jumlah frekuensi tertinggi)
+- (moneter, mikro, ekonomi, web, timun)
+- (moneter, manusia, ekonomi, web, timun)
+- (mikro, manusia, ekonomi, web, timun)
