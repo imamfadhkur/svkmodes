@@ -1,10 +1,11 @@
 # importing library
-import timeit
+import timeit, openpyxl, xlrd, re, string, xlsxwriter, xlwt, sys
+import pandas as pd
+import numpy as np
 from ast import While
 from itertools import combinations
 from traceback import print_tb
 from typing import Tuple
-import xlrd, re, numpy as np, string, xlsxwriter, xlwt, sys
 
 class SVKModes:
     def __init__(self,nama_file,k):             # saat pertama kali class dipanggil maka file akan langsung di proses
@@ -390,12 +391,14 @@ class SVKModes:
         print("F Aksen:",self.F_aksen)
         for i in self.F_aksen:
             print("=============== ITERASI KE:",i,"===============")
-            # print("Matriks W:",matriksW[i])
-            # print("Matriks DmXQ:",matriksDmXQ[i])
             if i > (len(self.centers_and_member)):
+                print("Matriks W:",matriksW[len(matriksW)-1])
+                print("Matriks DmXQ:",matriksDmXQ[len(matriksDmXQ)-1])
                 print("centroid:",keys[len(self.centers_and_member)-1])
                 print("member  :",val[len(self.centers_and_member)-1])
             else:
+                print("Matriks W:",matriksW[i-1])
+                print("Matriks DmXQ:",matriksDmXQ[i-1])
                 print("centroid:",keys[i-1])
                 print("member  :",val[i-1])
             print("F       :",self.F_aksen.get(i))
@@ -404,39 +407,127 @@ class SVKModes:
         print("member  :",val[len(self.centers_and_member)-1])
         print("F       :",self.F_aksen.get(i))
 
-    def to_excel(self,nama_file):
-        key = list(self.centers_and_member.keys())
-        key = key[len(key)-1]
+    def to_npy(self,nama_file):
+        pass
+
+    def to_excel(self,nama_file, file_lain_lain):
+
+        # AWAL PROSES PENYIMPANAN DATA CLUSTER TIAP ITERASI
         val = list(self.centers_and_member.values())
-        val = val[len(val)-1]
         workbook = xlsxwriter.Workbook(nama_file)
         worksheet = workbook.add_worksheet()
-        worksheet.write(0,0,"buku")
-        worksheet.write(0,1,"cluster")
-        for i in range(len(self.X)):
-            # print("member",val[i],"ini adalah cluster",i)
+        for item in range(len(self.X)):
+            worksheet.write(item+1,0,item)
+        for number_iter in range(len(val)):
+            worksheet.write(0,number_iter+1,number_iter)
+        worksheet.write(0,number_iter+2,number_iter+1)
+        j = 0
+        for i in val:
+            for obj in range(len(self.X)):
+                n = 0
+                for member_cluster in i:
+                    # print("obj:",obj)
+                    # print("i:",i)
+                    # print("membersss:",member_cluster)
+                    if obj+1 in member_cluster:
+                        worksheet.write(obj+1,j+1,n)
+                    n += 1
+            j += 1
+        val_last = val[len(val)-1]
+        for obj in range(len(self.X)):
             n = 0
-            for item in val:
-                if i+1 in item:
-                    worksheet.write(i+1,0,i)
-                    worksheet.write(i+1,1,n)
-                    # print("item:",i,"ada pada cluster:",n)
+            for item in val_last:
+                if obj+1 in item:
+                    worksheet.write(obj+1,j+1,n)
                 n += 1
+        # worksheet2 = workbook.add_worksheet("iterasi 2")
+        # worksheet2.write(0,0,"i can do it")
         workbook.close()
-    def run(self,max_iter):                                  # main metode untuk mengeksekusi antar metode
-        initial_cluster_center = self.gicca()       # variabel fiturs merupakan list berbentuk 3 dimensi, dengan isi yaitu fitur. k merupakan variabel untuk menampung jumlah cluster
-        clustering_svkmodes = self.clustering(initial_cluster_center,max_iter)
-        return clustering_svkmodes
+        # AKHIR PROSES PENYIMPANAN DATA CLUSTER TIAP ITERASI
 
-for item in range(5):
-    nama_file = "dataset/data_item_train"+str(item+2)+"_cb.xlsx"
-    # nama_file = "dataset/data_item_train1_cb.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
+
+        # "AWAL" PROSES PENYIMPANAN DATA CENTROID DARI CLUSTER, MEMBER DARI CLUSTER, F_AKSEN, MATRIKS W, DAN MATRIKS DM(X,Q)
+        # # centroid, membernya, f_aksen, matriks W, matriks Dm(X,Q)
+        # centroid
+        # print("centroid:",list(self.centers_and_member.keys()))
+        data_centroid = list(self.centers_and_member.keys())
+        # membernya
+        # print("membernya:",list(self.centers_and_member.values()))
+        data_member = list(self.centers_and_member.values())
+        # F_aksen
+        # print("F_aksen:",list(self.F_aksen.values()))
+        data_F_aksen = list(self.F_aksen.values())
+        # matriks W
+        # print("Matriks W:",list(self.matriksW.values()))
+        data_matriksW = list(self.matriksW.values())
+        data_W = []
+        for item in data_matriksW:
+            data_W.append(item.tolist())
+        # matriks Dm(X,Q)
+        # print("Matriks Dm(X,Q):",list(self.matriksDmXQ.values()))
+        data_matriksDmXQ = list(self.matriksDmXQ.values())
+
+        # # yang perlu ditambahkan: centroid, membernya, f_aksen, matriks W, matriks Dm(X,Q)
+        # workbook = xlsxwriter.Workbook(file_lain_lain)
+        # for i in range(len(data_F_aksen)):
+        #     name_sheet = "Iterasi "+str(i+1)
+        #     worksheet = workbook.add_worksheet(name_sheet)
+        #     worksheet.write(0,0,"Centroid")
+        #     worksheet.write(1,0,"Member")
+        #     worksheet.write(2,0,"F'")
+        #     worksheet.write(3,0,"Matriks W")
+        #     worksheet.write(4,0,"Matriks Dm(X,Q)")
+        #     # isi nilai
+        #     if i >= (len(data_centroid)):
+        #         worksheet.write(0,1,str(data_centroid[len(data_centroid)-1]))
+        #         worksheet.write(1,1,str(data_member[len(data_member)-1]))
+        #         worksheet.write(2,1,str(data_F_aksen[len(data_F_aksen)-1]))
+        #         worksheet.write(3,1,str(data_W[len(data_W)-1]))
+        #         worksheet.write(4,1,str(data_matriksDmXQ[len(data_matriksDmXQ)-1]))
+        #     else:
+        #         worksheet.write(0,1,str(data_centroid[i]))
+        #         worksheet.write(1,1,str(data_member[i]))
+        #         worksheet.write(2,1,str(data_F_aksen[i]))
+        #         worksheet.write(3,1,str(data_W[i]))
+        #         worksheet.write(4,1,str(data_matriksDmXQ[i]))                
+        # name_sheet = "Iterasi "+str(i+2)
+        # worksheet = workbook.add_worksheet(name_sheet)
+        # worksheet.write(0,0,"Centroid")
+        # worksheet.write(1,0,"Member")
+        # worksheet.write(2,0,"F'")
+        # worksheet.write(3,0,"Matriks W")
+        # worksheet.write(4,0,"Matriks Dm(X,Q)")
+        # # isi nilai
+        # worksheet.write(0,1,str(data_centroid[len(data_centroid)-1]))
+        # worksheet.write(1,1,str(data_member[len(data_member)-1]))
+        # worksheet.write(2,1,str(data_F_aksen[len(data_F_aksen)-1]))
+        # worksheet.write(3,1,str(data_W[len(data_W)-1]))
+        # worksheet.write(4,1,str(data_matriksDmXQ[len(data_matriksDmXQ)-1]))
+        # workbook.close()
+        # "AKHIR" PROSES PENYIMPANAN DATA CENTROID DARI CLUSTER, MEMBER DARI CLUSTER, F_AKSEN, MATRIKS W, DAN MATRIKS DM(X,Q)
+
+    def run(self,max_iter):                                  # main metode untuk mengeksekusi antar metode
+        if self.k == 1:
+            # print([list(self.X.keys())])
+            # exit()
+            self.centers_and_member = {0:[list(self.X.keys())]}
+            self.F_aksen = {0:0}
+            self.matriksW = {0:0}
+            self.matriksDmXQ = {0:0}
+        else:
+            initial_cluster_center = self.gicca()       # variabel fiturs merupakan list berbentuk 3 dimensi, dengan isi yaitu fitur. k merupakan variabel untuk menampung jumlah cluster
+            clustering_svkmodes = self.clustering(initial_cluster_center,max_iter)
+        # return clustering_svkmodes
+
+for item in range(1):
+    nama_file = "dataset/data_item_train"+str(item+1)+"_cb.xlsx"
     # nama_file = "toydata.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
     print("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nNama File:",nama_file)
-    for i in range(19):
+    clust = [2,3,17,19]
+    for i in clust:
         start = timeit.default_timer()
-        jumlah_cluster = i+2                          # variabel untuk menampung jumlah cluster 
-        max_iter = 300
+        jumlah_cluster = i                          # variabel untuk menampung jumlah cluster 
+        max_iter = 50
         print("Jumlah Cluster:",jumlah_cluster)
         print("maks. iterasi :",max_iter)
         data = SVKModes(nama_file,jumlah_cluster)   # inisialisasi awal class dengan membawa informasi nama file, dan jumlah cluster
@@ -446,6 +537,8 @@ for item in range(5):
         stop = timeit.default_timer() # catat waktu selesai
         lama_eksekusi = stop - start # lama eksekusi dalam satuan detik
         print("Lama eksekusi: ",lama_eksekusi,"detik\n")
-        nama = str("hasil_eksperimen_clustering/outputCB_data_train"+str(item+1)+"_"+str(jumlah_cluster)+"-cluster.xlsx")
-        data.to_excel(nama)
-        # exit()
+        nama = str("hasil_eksperimen/SV-K-Modes-output_cluster-"+str(jumlah_cluster)+".xlsx")
+        file_kedua = str("hasil_eksperimen/SV-K-Modes-InfoTambahan_fold-"+str(item+1)+"_cluster-"+str(jumlah_cluster)+".xlsx")
+        # nama = str("SVKModes-output_datatoy_"+str(jumlah_cluster)+"-cluster.xlsx")
+        # file_kedua = str("SVKModes-InfoTambahan_datatoy_"+str(jumlah_cluster)+"-cluster.xlsx")
+        data.to_excel(nama, file_kedua)

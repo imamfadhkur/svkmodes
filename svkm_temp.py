@@ -1,21 +1,20 @@
 # importing library
-import timeit
+import timeit, openpyxl, xlrd, re, string, xlsxwriter, xlwt, sys
+import pandas as pd
+import numpy as np
 from ast import While
 from itertools import combinations
 from traceback import print_tb
 from typing import Tuple
-import xlrd, re, numpy as np, string, xlsxwriter, xlwt, sys
-
-start = timeit.default_timer()
 
 class SVKModes:
     def __init__(self,nama_file,k):             # saat pertama kali class dipanggil maka file akan langsung di proses
         self.k = k                              # inisialisasi properti k (jumlah clustering)
         self.semua_dm = {}                      # digunakan untuk menyimpan nilai dm dari tiap cluster ke tiap objek
         self.centers_and_member = {}            # properti yang digunakan untuk menyimpan semua informasi centroid dan member nya pada tiap iterasi
-        self.F_aksen = []
-        self.W = {}
-        self.DmXQ = {}
+        self.F_aksen = {}
+        self.matriksW = {}
+        self.matriksDmXQ = {}
         self.dens = {}                          # properti yang digunakan untuk menyimpan informasi density dari setiap buku
         self.X = {}                             # properti yang digunakan untuk menyimpan informasi data object dan keywordnya, berisi key yaitu object nya, dan value nya yaitu keyword nya
         
@@ -25,14 +24,15 @@ class SVKModes:
         # PROSES MEMINDAHKAN DATA KEYWORD KEDALAM SEBUAH VARIABEL UNTUK PROSES SELANJUTNYA
         for n in range(data.nrows):             # perulangan sebanyak baris pada excel dengan tujuan untuk memfilter data
             fitur = []                          # variabel sementara untuk menyimpan informasi satu fitur
-            for m in range(data.ncols-1):       # perulangan sebanyak fitur yang ada
-                fitur.append(data.cell_value(rowx=n,colx=(m+1)).split(", "))    # memecah isi fitur dan menjadikannya sebagai list dengan pemisah yaitu tanda koma
-            self.X[data.cell_value(rowx=n,colx=0)] = fitur                      # setelah satu fitur pada satu objek telah selesai te-record, maka disimpan pada variabel utama
+            for m in range(data.ncols-2):       # perulangan sebanyak fitur yang ada
+                fitur.append(data.cell_value(rowx=n,colx=(m+2)).split(", "))    # memecah isi fitur dan menjadikannya sebagai list dengan pemisah yaitu tanda koma
+            self.X[data.cell_value(rowx=n,colx=1)] = fitur                      # setelah satu fitur pada satu objek telah selesai te-record, maka disimpan pada variabel utama
         
         # AWAL PROSES UNTUK MENCARI DENSITY
         for i in self.X.keys():                     # perulangan sebanyak key yang ada, dengan nilai i yaitu tiap key
             dens_fitur = 0                          # membuat variabel kosongan untuk menampung nilai density tiap fitur
-            for m in range(len(self.X.get(1))):     # looping sebanyak fitur yang ada
+            data = list(self.X.values())
+            for m in range(len(data[0])):     # looping sebanyak fitur yang ada
                 for n in self.X.keys():             # looping semua objek yang ada (key merupakan object pada properti X)
                     irisan_vajxi = np.intersect1d(self.X.get(i)[m], self.X.get(n)[m])     # mencari irisan dari fitur pada objek ke-i dengan fitur pada objek ke-n
                     gabungan_vajxi = np.union1d(self.X.get(i)[m], self.X.get(n)[m])       # mencari gabungan dari fitur pada objek ke-i dengan fitur pada objek ke-n
@@ -48,12 +48,15 @@ class SVKModes:
         if type(Xm) != list:                            # untuk mengecek apakah Xm (centroid) bukan list, karena jika berbentuk list yaitu berarti centroid nya bukan lah object yang ada, melainkan object baru yang hanya berisi keyword
             for i in self.X.keys():                     # loop sebanyak objeknya
                 dmd = 0                                 # membuat variabel kosongan untuk menyimpan nilai dm dari masing-masing fitur (dissimiliarity measure)
-                for m in range(len(self.X.get(1))):     # untuk melooping tiap fitur yang ada
+                for m in range(len(self.X.get(i))):     # untuk melooping tiap fitur yang ada
+                    # print(Xm,"|",self.X.get(Xm)[m],"|",self.X.get(i)[m])
                     irisan_vasxi = np.intersect1d(self.X.get(Xm)[m], self.X.get(i)[m])      # mencari irisan antara centroid dengan fitur pada objek ke-i
+                    # exit()
                     gabungan_vasxi = np.union1d(self.X.get(Xm)[m], self.X.get(i)[m])        # mencari gabungan antara centroid dengan fitur pada objek ke-i
                     dmd += 1-(len(irisan_vasxi)/len(gabungan_vasxi))                        # penggabungan semua nilai dissimiliarity measure dari semua fitur
                 Dm_dens[Xm,i] = dmd*self.dens.get(i)                                        # menyimpan nilai dissimiliarity measire pada variabel Dm
                 self.semua_dm[Xm,i] = dmd                                                   # menyimpan informasi Dm ke properti penampung utama, yaitu semua_dm yang digunakan untuk menyimpan semua dm dari tiap centroid ke tiap object. perlu di ketahui bahwa untuk mencari centroid yang diperlukan ialah dm*dens, dm != dm*dens
+            # exit()
         else:                                           # jika centroid adalah object baru, yang hanya berisi keyword, maka masuk bagian else sini
             for i in self.X.keys():                     # loop sebanyak object
                 dmd = 0                                 # membuat variabel kosongan untuk menyimpan nilai dissimiliarity measure dari tiap fitur dari salah satu object ke tiap fitur dari tiap object
@@ -147,6 +150,14 @@ class SVKModes:
                 # print("vj sort:",vj_sort)
                 kwsv = [k for k,v in vj.items() if v == x.get(vj_sort[r-1])]
                 # print("keys with same value by r:",kwsv)
+                # print("r",r)
+                # print("vjsort:",vj_sort)
+                # print("x:",x)
+                # print("vj_sort[r-1]:",vj_sort[r-1])
+                # print("vj_sort[r]:",vj_sort[r])
+                # exit()
+                masuk_langkah6 = False
+                masuk_langkah7 = False
                 if r < 1:                      # untuk memfilter apabila terdapat nilai r yang tidak diharapkan
                     print("cluster:",cluster)   # untuk mencetak di cluster mana dan apa membernya
                     print("ERROR, r lebih kecil dari 1")
@@ -154,28 +165,32 @@ class SVKModes:
                 elif r == 1:
                     Q.append(vj_sort[0])        # untuk menambahkan nilai Q
                     # print("masuk langkah 5")
-                elif r > 1 and x.get(vj_sort[r-1]) > x.get(vj_sort[r]):   # nilai r dikurangi satu karena dalam program ini membacanya berdasarkan index, sedangkan dalam contoh perhitungan manual nilai r di baca berdasarkan urutan, bukan secara index
-                    Q.extend(vj_sort[0:r])
-                    # print("masuk langkah 6")
+                elif r > 1 and len(vj_sort)-1 >= r:
+                    if r > 1 and x.get(vj_sort[r-1]) > x.get(vj_sort[r]):   # nilai r dikurangi satu karena dalam program ini membacanya berdasarkan index, sedangkan dalam contoh perhitungan manual nilai r di baca berdasarkan urutan, bukan secara index
+                        Q.extend(vj_sort[0:r])
+                        # print("masuk langkah 6")
+                        masuk_langkah6 = True
                 
                 # awal proses langkah 7
-                elif r > 1 and x.get(vj_sort[0]) >= x.get(vj_sort[1]) >= x.get(vj_sort[r-2]) > x.get(vj_sort[r-1]) == x.get(vj_sort[r]) > x.get(vj_sort[r+1]) >= x.get(vj_sort[len(vj_sort)-1]) : # langkah 7 pada algoritma HAFSM
-                    # print("masuk langkah 7")
-                    Q.append(vj_sort[0])
-                    Qrj = 0
-                    for rj in range(r-2):               # min 2 karena 1 dihitung berdasarkan index sedangkan r nya tidak menghitung berdasarkan index, dan 1 nya karena dari rumus dikurangi 1
-                        Qrj += vj.get(vj_sort[rj])      # untuk menghitung nilai frekuensi semua object sebelum r 
-                    Qrj1 = Qrj                          # meng-copy nilai frekuensi semua object sebelum r
-                    Qrj += vj.get(vj_sort[rj+1])        # meng-update nilai Qrj yang ke r
-                    Qrj1 += vj.get(vj_sort[rj+2])       # meng-update nilai Qrj yang ke r+1
-                    if Qrj > Qrj1:                      # jika jumlah semua frekuensi ke r lebih besar dari jumlah semua frekuensi ke r+1
-                        Q.append(vj_sort[rj+1])         # maka, yang dijadikan nilai Q selanjutnya adalah keyword ke r
-                    else:                               # jika jumlah semua frekuensi ke r lebih kecil atau sama dengan jumlah semua frekuensi ke r+1
-                        Q.append(vj.get(vj_sort[rj+2])) # maka, yang dijadikan nilai Q selanjutnya adalah keyword ke r+1
-                # batas proses langkah 7
+                if r > 1 and masuk_langkah6 == False and len(vj_sort)-1 >= r+1:
+                    if r > 1 and x.get(vj_sort[0]) >= x.get(vj_sort[1]) >= x.get(vj_sort[r-2]) > x.get(vj_sort[r-1]) == x.get(vj_sort[r]) > x.get(vj_sort[r+1]) >= x.get(vj_sort[len(vj_sort)-1]) : # langkah 7 pada algoritma HAFSM
+                        # print("masuk langkah 7")
+                        masuk_langkah7 = True
+                        Q.append(vj_sort[0])
+                        Qrj = 0
+                        for rj in range(r-2):               # min 2 karena 1 dihitung berdasarkan index sedangkan r nya tidak menghitung berdasarkan index, dan 1 nya karena dari rumus dikurangi 1
+                            Qrj += vj.get(vj_sort[rj])      # untuk menghitung nilai frekuensi semua object sebelum r 
+                        Qrj1 = Qrj                          # meng-copy nilai frekuensi semua object sebelum r
+                        Qrj += vj.get(vj_sort[rj+1])        # meng-update nilai Qrj yang ke r
+                        Qrj1 += vj.get(vj_sort[rj+2])       # meng-update nilai Qrj yang ke r+1
+                        if Qrj > Qrj1:                      # jika jumlah semua frekuensi ke r lebih besar dari jumlah semua frekuensi ke r+1
+                            Q.append(vj_sort[rj+1])         # maka, yang dijadikan nilai Q selanjutnya adalah keyword ke r
+                        else:                               # jika jumlah semua frekuensi ke r lebih kecil atau sama dengan jumlah semua frekuensi ke r+1
+                            Q.append(vj.get(vj_sort[rj+2])) # maka, yang dijadikan nilai Q selanjutnya adalah keyword ke r+1
+                    # batas proses langkah 7
                 
                 # proses masuk langkah 8
-                else:
+                if masuk_langkah6 == False and masuk_langkah7 == False:
                     # print("masuk langkah 8")
                     # print("vj:",vj)
                     # print("vj_sort:",vj_sort)
@@ -264,13 +279,15 @@ class SVKModes:
             for item in range(len(self.X)):         # looping sebanyak object yang ada
                 temp.append(self.semua_dm.get((centers[jml_cluster],item+1)))       # proses pemanggilan nilai dm dari variabel utama (self.semua_dm) untuk ditambahkan kedalam variabel temp
             matriksDmXQ.append(temp)                   # menambahkan data dm semua object terhadap satu centroid kedalam variabel matriks Q
-        matriksDmXQ = matriksW*(np.array(matriksDmXQ))    # setelah selesai proses pembuatan matriks Q nya, langsung mengalikan tiap element matriks Q dengan matriks W
-        F_aksen_before = np.sum(matriksDmXQ)                  # pada baris ini melakukan penjumlahan pada tiap cell dari matriks
+        matriksDmXQ_W = matriksW*(np.array(matriksDmXQ))    # setelah selesai proses pembuatan matriks Q nya, langsung mengalikan tiap element matriks Q dengan matriks W
+        F_aksen_before = np.sum(matriksDmXQ_W)                  # pada baris ini melakukan penjumlahan pada tiap cell dari matriks
         # print(matriksW,"|",matriksDmXQ)
         # print(self.centers_and_member)
         # exit()
-        # print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ITERASI KE- 1","~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       # untuk keterangan iterasi ke berapa
-        self.F_aksen.append(F_aksen_before)
+        # print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ITERASI KE-1","~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")       # untuk keterangan iterasi ke berapa
+        self.F_aksen[(1)] = F_aksen_before
+        self.matriksDmXQ[(1)] = matriksDmXQ
+        self.matriksW[(1)] = matriksW
         # print("F aksen awal:",F_aksen_before)
         # print(self.centers_and_member)
 
@@ -298,7 +315,6 @@ class SVKModes:
                 # print(matriksDmXQ)
                 F = matriksW*(np.array(matriksDmXQ))
                 F_aksen_after = np.sum(F)
-                self.F_aksen.append(F_aksen_after)
                 # print("F aksen after:",F_aksen_after)
                 # print(matriksW,"\n(atas)<-W | Q->(bawah)\n",np.array(matriksDmXQ))
                 # print("W*Q:",F)
@@ -309,8 +325,7 @@ class SVKModes:
                 if F_aksen_before == F_aksen_after:
                     konvergen = True
                     # self.centers_and_member[center_tuple] = list([temp[i] for i in keys1])
-                    self.F_aksen.append(F_aksen_after)
-                    # print("F aksen after:",F_aksen_after)
+                    # print("317. F aksen after:",F_aksen_after)
                 else:
                     # masuk langkah 3
                     # print("masuk else")
@@ -353,74 +368,177 @@ class SVKModes:
                     F_aksen_before = F_aksen_after
                     F = matriksW*(np.array(matriksDmXQ))
                     F_aksen_after = np.sum(F)
+                    # self.matriksDmXQ[(iter)] = matriksDmXQ
+                    # self.matriksW[(iter)] = matriksW
                     # print(matriksW,"\n<-W | Q->\n",np.array(matriksDmXQ))
                     # print("W*Q:",F)
                     # print("Step 3: F after:",F_aksen_after,"|","F before:",F_aksen_before)
                     if F_aksen_before == F_aksen_after:
                         konvergen = True
-                        self.F_aksen.append(F_aksen_after)
-                        # print("F aksen after:",F_aksen_after)
+                        # print("367. F aksen after:",F_aksen_after)
                 # exit()
+                self.F_aksen[(iter)] = F_aksen_before
+                self.matriksDmXQ[(iter)] = matriksDmXQ
+                self.matriksW[(iter)] = matriksW
             # print("============================================================================")
 
-
-        # KETIKA SUDAH SELESAI PADA ITERASI TERAKHIR, MAKA DATA TERAKHIR PADA PROPERTI CENTER_AND_MEMBER ADALAH HASIL CLUSTERING YANG SUDAH KONVERGEN
-        # member = list(self.centers_and_member.values())
-        # a = "Proses berhenti pada iterasi ke:",iter,"dengan nilai F' yaitu:",F_aksen_before,", dengan anggota object dari tiap cluster yaitu:",member[len(member)-1]
-        # return a
-    
     def print_info(self):
         n = 0
         keys = list(self.centers_and_member.keys())
         val = list(self.centers_and_member.values())
-        # print("F aksen:",len(self.F_aksen))
-        # print("centroid:",len(self.centers_and_member))
-        # exit()
-        for i in range(len(keys)):
-            print("=============================== ITERASI KE:",i+1,"===============================")
-            # print("centroid:",keys[i])
-            print("centroid:",keys[i],"\nmember:",val[i])
-            print("F       :",self.F_aksen[i])
-        # print("F aksen:",len(self.F_aksen))
-        # print("i:",i+1)
-        if len(self.F_aksen) > (i+1):
-            print("=============================== ITERASI KE:",i+2,"===============================")
-            # print("centroid:",keys[i])
-            print("centroid:",keys[i],"\nmember:",val[i])
-            print("F       :",self.F_aksen[i])
-            
-        # exit()
-        # for F in range(len(self.F_aksen)):
-        #     print("iterasi ke:",F+1)
-        #     print("F:",self.F_aksen[F])
-        #     if F == len(self.F_aksen)-1:
-        #         print("centroid:",len(keys[F-1]),"\nmember:",len(val[F-1]))
-        #         # print("centroid:",keys[F-1],"\nmember:",val[F-1])
-        #     else:
-        #         print("centroid:",len(keys[F]),"\nmember:",len(val[F]))
-        #         # print("centroid:",keys[F],"\nmember:",val[F])
-        #     # n += 1
-        # print("data centroid cluster")
-        # print("data member cluster")
-        # print("data F_aksen_before & after")
-        # print("data W dan Dm(X,Q)")
+        matriksW = list(self.matriksW.values())
+        matriksDmXQ = list(self.matriksDmXQ.values())
+        print("F Aksen:",self.F_aksen)
+        for i in self.F_aksen:
+            print("=============== ITERASI KE:",i,"===============")
+            if i > (len(self.centers_and_member)):
+                print("Matriks W:",matriksW[len(matriksW)-1])
+                print("Matriks DmXQ:",matriksDmXQ[len(matriksDmXQ)-1])
+                print("centroid:",keys[len(self.centers_and_member)-1])
+                print("member  :",val[len(self.centers_and_member)-1])
+            else:
+                print("Matriks W:",matriksW[i-1])
+                print("Matriks DmXQ:",matriksDmXQ[i-1])
+                print("centroid:",keys[i-1])
+                print("member  :",val[i-1])
+            print("F       :",self.F_aksen.get(i))
+        print("=============== ITERASI KE:",i+1,"===============")
+        print("centroid:",keys[len(self.centers_and_member)-1])
+        print("member  :",val[len(self.centers_and_member)-1])
+        print("F       :",self.F_aksen.get(i))
+
+    def to_npy(self,nama_file):
+        pass
+
+    def to_excel(self,nama_file, file_lain_lain):
+
+        # AWAL PROSES PENYIMPANAN DATA CLUSTER TIAP ITERASI
+        val = list(self.centers_and_member.values())
+        workbook = xlsxwriter.Workbook(nama_file)
+        worksheet = workbook.add_worksheet()
+        for item in range(len(self.X)):
+            worksheet.write(item+1,0,item)
+        for number_iter in range(len(val)):
+            worksheet.write(0,number_iter+1,number_iter)
+        worksheet.write(0,number_iter+2,number_iter+1)
+        j = 0
+        for i in val:
+            for obj in range(len(self.X)):
+                n = 0
+                for member_cluster in i:
+                    # print("obj:",obj)
+                    # print("i:",i)
+                    # print("membersss:",member_cluster)
+                    if obj+1 in member_cluster:
+                        worksheet.write(obj+1,j+1,n)
+                    n += 1
+            j += 1
+        val_last = val[len(val)-1]
+        for obj in range(len(self.X)):
+            n = 0
+            for item in val_last:
+                if obj+1 in item:
+                    worksheet.write(obj+1,j+1,n)
+                n += 1
+        # worksheet2 = workbook.add_worksheet("iterasi 2")
+        # worksheet2.write(0,0,"i can do it")
+        workbook.close()
+        # AKHIR PROSES PENYIMPANAN DATA CLUSTER TIAP ITERASI
+
+
+        # "AWAL" PROSES PENYIMPANAN DATA CENTROID DARI CLUSTER, MEMBER DARI CLUSTER, F_AKSEN, MATRIKS W, DAN MATRIKS DM(X,Q)
+        # # centroid, membernya, f_aksen, matriks W, matriks Dm(X,Q)
+        # centroid
+        # print("centroid:",list(self.centers_and_member.keys()))
+        data_centroid = list(self.centers_and_member.keys())
+        # membernya
+        # print("membernya:",list(self.centers_and_member.values()))
+        data_member = list(self.centers_and_member.values())
+        # F_aksen
+        # print("F_aksen:",list(self.F_aksen.values()))
+        data_F_aksen = list(self.F_aksen.values())
+        # matriks W
+        # print("Matriks W:",list(self.matriksW.values()))
+        data_matriksW = list(self.matriksW.values())
+        data_W = []
+        for item in data_matriksW:
+            data_W.append(item.tolist())
+        # matriks Dm(X,Q)
+        # print("Matriks Dm(X,Q):",list(self.matriksDmXQ.values()))
+        data_matriksDmXQ = list(self.matriksDmXQ.values())
+
+        # yang perlu ditambahkan: centroid, membernya, f_aksen, matriks W, matriks Dm(X,Q)
+        workbook = xlsxwriter.Workbook(file_lain_lain)
+        for i in range(len(data_F_aksen)):
+            name_sheet = "Iterasi "+str(i+1)
+            worksheet = workbook.add_worksheet(name_sheet)
+            worksheet.write(0,0,"Centroid")
+            worksheet.write(1,0,"Member")
+            worksheet.write(2,0,"F'")
+            worksheet.write(3,0,"Matriks W")
+            worksheet.write(4,0,"Matriks Dm(X,Q)")
+            # isi nilai
+            if i >= (len(data_centroid)):
+                worksheet.write(0,1,str(data_centroid[len(data_centroid)-1]))
+                worksheet.write(1,1,str(data_member[len(data_member)-1]))
+                worksheet.write(2,1,str(data_F_aksen[len(data_F_aksen)-1]))
+                worksheet.write(3,1,str(data_W[len(data_W)-1]))
+                worksheet.write(4,1,str(data_matriksDmXQ[len(data_matriksDmXQ)-1]))
+            else:
+                worksheet.write(0,1,str(data_centroid[i]))
+                worksheet.write(1,1,str(data_member[i]))
+                worksheet.write(2,1,str(data_F_aksen[i]))
+                worksheet.write(3,1,str(data_W[i]))
+                worksheet.write(4,1,str(data_matriksDmXQ[i]))                
+        name_sheet = "Iterasi "+str(i+2)
+        worksheet = workbook.add_worksheet(name_sheet)
+        worksheet.write(0,0,"Centroid")
+        worksheet.write(1,0,"Member")
+        worksheet.write(2,0,"F'")
+        worksheet.write(3,0,"Matriks W")
+        worksheet.write(4,0,"Matriks Dm(X,Q)")
+        # isi nilai
+        worksheet.write(0,1,str(data_centroid[len(data_centroid)-1]))
+        worksheet.write(1,1,str(data_member[len(data_member)-1]))
+        worksheet.write(2,1,str(data_F_aksen[len(data_F_aksen)-1]))
+        worksheet.write(3,1,str(data_W[len(data_W)-1]))
+        worksheet.write(4,1,str(data_matriksDmXQ[len(data_matriksDmXQ)-1]))
+        workbook.close()
+        # "AKHIR" PROSES PENYIMPANAN DATA CENTROID DARI CLUSTER, MEMBER DARI CLUSTER, F_AKSEN, MATRIKS W, DAN MATRIKS DM(X,Q)
 
     def run(self,max_iter):                                  # main metode untuk mengeksekusi antar metode
-        initial_cluster_center = self.gicca()       # variabel fiturs merupakan list berbentuk 3 dimensi, dengan isi yaitu fitur. k merupakan variabel untuk menampung jumlah cluster
-        clustering_svkmodes = self.clustering(initial_cluster_center,max_iter)
-        return clustering_svkmodes
+        if self.k == 1:
+            # print([list(self.X.keys())])
+            # exit()
+            self.centers_and_member = {0:[list(self.X.keys())]}
+            self.F_aksen = {0:0}
+            self.matriksW = {0:0}
+            self.matriksDmXQ = {0:0}
+        else:
+            initial_cluster_center = self.gicca()       # variabel fiturs merupakan list berbentuk 3 dimensi, dengan isi yaitu fitur. k merupakan variabel untuk menampung jumlah cluster
+            clustering_svkmodes = self.clustering(initial_cluster_center,max_iter)
+        # return clustering_svkmodes
 
-for item in range(5):
-    # nama_file = "dataset/data_item_train"+str(item+1)+"_cb.xlsx"
-    # nama_file = "dataset/data_item_train1_cb.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
-    nama_file = "toydata.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
-    print("\n==================================================================\n",nama_file)
-    jumlah_cluster = 3                          # variabel untuk menampung jumlah cluster 
-    data = SVKModes(nama_file,jumlah_cluster)   # inisialisasi awal class dengan membawa informasi nama file, dan jumlah cluster
-    max_iter = 50
-    data.run(max_iter)                           # menampilkan hasil dari perhitungan
-    data.print_info()
-    stop = timeit.default_timer() # catat waktu selesai
-    lama_eksekusi = stop - start # lama eksekusi dalam satuan detik
-    print("Lama eksekusi: ",lama_eksekusi,"detik\n")
-    exit()
+for item in range(1):
+    nama_file = "dataset/data_item_train"+str(item+1)+"_cb.xlsx"
+    # nama_file = "toydata.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
+    print("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nNama File:",nama_file)
+    clust = [3,19]
+    for i in clust:
+        start = timeit.default_timer()
+        jumlah_cluster = i                          # variabel untuk menampung jumlah cluster 
+        max_iter = 50
+        print("Jumlah Cluster:",jumlah_cluster)
+        print("maks. iterasi :",max_iter)
+        data = SVKModes(nama_file,jumlah_cluster)   # inisialisasi awal class dengan membawa informasi nama file, dan jumlah cluster
+        data.run(max_iter)                           # menampilkan hasil dari perhitungan
+        print("print info:")
+        data.print_info()
+        stop = timeit.default_timer() # catat waktu selesai
+        lama_eksekusi = stop - start # lama eksekusi dalam satuan detik
+        print("Lama eksekusi: ",lama_eksekusi,"detik\n")
+        nama = str("hasil_eksperimen/SV-K-Modes-output_cluster-"+str(jumlah_cluster)+".xlsx")
+        file_kedua = str("hasil_eksperimen/SV-K-Modes-InfoTambahan_fold-"+str(item+1)+"_cluster-"+str(jumlah_cluster)+".xlsx")
+        # nama = str("SVKModes-output_datatoy_"+str(jumlah_cluster)+"-cluster.xlsx")
+        # file_kedua = str("SVKModes-InfoTambahan_datatoy_"+str(jumlah_cluster)+"-cluster.xlsx")
+        data.to_excel(nama, file_kedua)
