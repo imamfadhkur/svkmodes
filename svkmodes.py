@@ -1,5 +1,5 @@
 # importing library
-import timeit, openpyxl, xlrd, re, string, xlsxwriter, xlwt, sys
+import timeit, openpyxl, xlrd, re, string, xlsxwriter, xlwt, sys, os
 import pandas as pd
 import numpy as np
 from ast import While
@@ -24,10 +24,10 @@ class SVKModes:
         # PROSES MEMINDAHKAN DATA KEYWORD KEDALAM SEBUAH VARIABEL UNTUK PROSES SELANJUTNYA
         for n in range(data.nrows):             # perulangan sebanyak baris pada excel dengan tujuan untuk memfilter data
             fitur = []                          # variabel sementara untuk menyimpan informasi satu fitur
-            for m in range(data.ncols-2):       # perulangan sebanyak fitur yang ada
-                fitur.append(data.cell_value(rowx=n,colx=(m+2)).split(", "))    # memecah isi fitur dan menjadikannya sebagai list dengan pemisah yaitu tanda koma
-            self.X[data.cell_value(rowx=n,colx=1)] = fitur                      # setelah satu fitur pada satu objek telah selesai te-record, maka disimpan pada variabel utama
-        
+            for m in range(data.ncols-1):       # perulangan sebanyak fitur yang ada
+                fitur.append(data.cell_value(rowx=n,colx=(m+1)).split(","))    # memecah isi fitur dan menjadikannya sebagai list dengan pemisah yaitu tanda koma
+            self.X[data.cell_value(rowx=n,colx=0)] = fitur                      # setelah satu fitur pada satu objek telah selesai te-record, maka disimpan pada variabel utama
+
         # AWAL PROSES UNTUK MENCARI DENSITY
         for i in self.X.keys():                     # perulangan sebanyak key yang ada, dengan nilai i yaitu tiap key
             dens_fitur = 0                          # membuat variabel kosongan untuk menampung nilai density tiap fitur
@@ -38,7 +38,7 @@ class SVKModes:
                     gabungan_vajxi = np.union1d(self.X.get(i)[m], self.X.get(n)[m])       # mencari gabungan dari fitur pada objek ke-i dengan fitur pada objek ke-n
                     dens_fitur += len(irisan_vajxi)/len(gabungan_vajxi)                   # untuk mencari density yaitu dengan cara membagi irisan dengan union
             self.dens[i] = dens_fitur/(len(self.X))                              # nilai density dari tiap fitur dibagi banyaknya objek
-        # print(self.X)
+        # print(self.dens)
         # exit()
         # AKHIR PROSES UNTUK MENCARI DENSITY
         
@@ -407,20 +407,25 @@ class SVKModes:
         print("member  :",val[len(self.centers_and_member)-1])
         print("F       :",self.F_aksen.get(i))
 
-    def to_npy(self,nama_file):
-        pass
-
-    def to_excel(self,nama_file, file_lain_lain):
+    def save_data(self, path, nama_file, max_iter):
+        # Check whether the specified path exists or not
+        isExist = os.path.exists(path)
+        if not isExist:
+        # Create a new directory because it does not exist 
+            os.makedirs(path)
 
         # AWAL PROSES PENYIMPANAN DATA CLUSTER TIAP ITERASI
         val = list(self.centers_and_member.values())
-        workbook = xlsxwriter.Workbook(nama_file)
+        workbook = xlsxwriter.Workbook(path+"/"+nama_file)
         worksheet = workbook.add_worksheet()
+        container = list(self.F_aksen.values())
         for item in range(len(self.X)):
             worksheet.write(item+1,0,item)
-        for number_iter in range(len(val)):
+        for number_iter in range(len(container)):
             worksheet.write(0,number_iter+1,number_iter)
         worksheet.write(0,number_iter+2,number_iter+1)
+        # workbook.close()
+        # exit()
         j = 0
         for i in val:
             for obj in range(len(self.X)):
@@ -434,12 +439,15 @@ class SVKModes:
                     n += 1
             j += 1
         val_last = val[len(val)-1]
-        for obj in range(len(self.X)):
-            n = 0
-            for item in val_last:
-                if obj+1 in item:
-                    worksheet.write(obj+1,j+1,n)
-                n += 1
+        lenval = len(val)-1
+        while j <= len(container):
+            for obj in range(len(self.X)):
+                n = 0
+                for item in val_last:
+                    if obj+1 in item:
+                        worksheet.write(obj+1,j+1,n)
+                    n += 1
+            j += 1
         # worksheet2 = workbook.add_worksheet("iterasi 2")
         # worksheet2.write(0,0,"i can do it")
         workbook.close()
@@ -448,62 +456,55 @@ class SVKModes:
 
         # "AWAL" PROSES PENYIMPANAN DATA CENTROID DARI CLUSTER, MEMBER DARI CLUSTER, F_AKSEN, MATRIKS W, DAN MATRIKS DM(X,Q)
         # # centroid, membernya, f_aksen, matriks W, matriks Dm(X,Q)
-        # centroid
-        # print("centroid:",list(self.centers_and_member.keys()))
-        data_centroid = list(self.centers_and_member.keys())
         # membernya
         # print("membernya:",list(self.centers_and_member.values()))
-        data_member = list(self.centers_and_member.values())
+        # data_member = list(self.centers_and_member.values())
         # F_aksen
         # print("F_aksen:",list(self.F_aksen.values()))
         data_F_aksen = list(self.F_aksen.values())
+        data_F_aksen.append(data_F_aksen[len(data_F_aksen)-1])
+        # centroid
+        # print("centroid:",list(self.centers_and_member.keys()))
+        data_centroid = list(self.centers_and_member.keys())
+        a = len(data_centroid)
+        while a < len(data_F_aksen):
+            data_centroid.append(data_centroid[len(data_centroid)-1])
+            a += 1
         # matriks W
         # print("Matriks W:",list(self.matriksW.values()))
         data_matriksW = list(self.matriksW.values())
+        data_matriksW.append(data_matriksW[len(data_matriksW)-1])
         data_W = []
         for item in data_matriksW:
             data_W.append(item.tolist())
         # matriks Dm(X,Q)
         # print("Matriks Dm(X,Q):",list(self.matriksDmXQ.values()))
         data_matriksDmXQ = list(self.matriksDmXQ.values())
+        data_matriksDmXQ.append(data_matriksDmXQ[len(data_matriksDmXQ)-1])
+
+        # for i in range(len(data_F_aksen)):
+        #     data_centroid.append(data_centroid[])
+
+        # save data to npy
+        nama_file_centroid = path+"/SVKM_c"+str(self.k)+"_i"+str(max_iter)+"-centroid.npy"
+        nama_file_F = path+"/SVKM_c"+str(self.k)+"_i"+str(max_iter)+"-F.npy"
+        nama_file_matriksW = path+"/SVKM_c"+str(self.k)+"_i"+str(max_iter)+"-W.npy"
+        nama_file_matriksDmXQ = path+"/SVKM_c"+str(self.k)+"_i"+str(max_iter)+"-DmXQ.npy"
+        np.save(nama_file_centroid,data_centroid)
+        np.save(nama_file_F,data_F_aksen)
+        np.save(nama_file_matriksW,data_matriksW)
+        np.save(nama_file_matriksDmXQ,data_matriksDmXQ)
+
+        # a = np.load(nama_file_centroid, allow_pickle=True)
+        # print("npy centroid:",a)
+        b = np.load(nama_file_F)
+        # print("npy len(f):",len(b))
+        # print("npy f:",b)
+        # c = np.load(nama_file_matriksW)
+        # print("npy w:",c)
 
         # # yang perlu ditambahkan: centroid, membernya, f_aksen, matriks W, matriks Dm(X,Q)
-        # workbook = xlsxwriter.Workbook(file_lain_lain)
-        # for i in range(len(data_F_aksen)):
-        #     name_sheet = "Iterasi "+str(i+1)
-        #     worksheet = workbook.add_worksheet(name_sheet)
-        #     worksheet.write(0,0,"Centroid")
-        #     worksheet.write(1,0,"Member")
-        #     worksheet.write(2,0,"F'")
-        #     worksheet.write(3,0,"Matriks W")
-        #     worksheet.write(4,0,"Matriks Dm(X,Q)")
-        #     # isi nilai
-        #     if i >= (len(data_centroid)):
-        #         worksheet.write(0,1,str(data_centroid[len(data_centroid)-1]))
-        #         worksheet.write(1,1,str(data_member[len(data_member)-1]))
-        #         worksheet.write(2,1,str(data_F_aksen[len(data_F_aksen)-1]))
-        #         worksheet.write(3,1,str(data_W[len(data_W)-1]))
-        #         worksheet.write(4,1,str(data_matriksDmXQ[len(data_matriksDmXQ)-1]))
-        #     else:
-        #         worksheet.write(0,1,str(data_centroid[i]))
-        #         worksheet.write(1,1,str(data_member[i]))
-        #         worksheet.write(2,1,str(data_F_aksen[i]))
-        #         worksheet.write(3,1,str(data_W[i]))
-        #         worksheet.write(4,1,str(data_matriksDmXQ[i]))                
-        # name_sheet = "Iterasi "+str(i+2)
-        # worksheet = workbook.add_worksheet(name_sheet)
-        # worksheet.write(0,0,"Centroid")
-        # worksheet.write(1,0,"Member")
-        # worksheet.write(2,0,"F'")
-        # worksheet.write(3,0,"Matriks W")
-        # worksheet.write(4,0,"Matriks Dm(X,Q)")
-        # # isi nilai
-        # worksheet.write(0,1,str(data_centroid[len(data_centroid)-1]))
-        # worksheet.write(1,1,str(data_member[len(data_member)-1]))
-        # worksheet.write(2,1,str(data_F_aksen[len(data_F_aksen)-1]))
-        # worksheet.write(3,1,str(data_W[len(data_W)-1]))
-        # worksheet.write(4,1,str(data_matriksDmXQ[len(data_matriksDmXQ)-1]))
-        # workbook.close()
+        
         # "AKHIR" PROSES PENYIMPANAN DATA CENTROID DARI CLUSTER, MEMBER DARI CLUSTER, F_AKSEN, MATRIKS W, DAN MATRIKS DM(X,Q)
 
     def run(self,max_iter):                                  # main metode untuk mengeksekusi antar metode
@@ -518,27 +519,24 @@ class SVKModes:
             initial_cluster_center = self.gicca()       # variabel fiturs merupakan list berbentuk 3 dimensi, dengan isi yaitu fitur. k merupakan variabel untuk menampung jumlah cluster
             clustering_svkmodes = self.clustering(initial_cluster_center,max_iter)
         # return clustering_svkmodes
-
-for item in range(1):
-    nama_file = "dataset/data_item_train"+str(item+1)+"_cb.xlsx"
-    # nama_file = "toydata.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
-    print("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nNama File:",nama_file)
-    clust = [2,3,17,19]
-    for i in clust:
+if __name__ == "__main__":
+    # file_buku = "dataset/data_deskripsi_buku.xlsx"      # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 3585*2
+    file_buku = "datatoy.xlsx"                        # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
+    print("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nNama File:",file_buku)
+    for jumlah_cluster in range(2,21):               # start pada angka 2, stop pada angka 20
         start = timeit.default_timer()
-        jumlah_cluster = i                          # variabel untuk menampung jumlah cluster 
-        max_iter = 50
+        max_iter = 100
         print("Jumlah Cluster:",jumlah_cluster)
         print("maks. iterasi :",max_iter)
-        data = SVKModes(nama_file,jumlah_cluster)   # inisialisasi awal class dengan membawa informasi nama file, dan jumlah cluster
-        data.run(max_iter)                           # menampilkan hasil dari perhitungan
-        print("print info:")
-        data.print_info()
+        data = SVKModes(file_buku,jumlah_cluster)   # inisialisasi awal class dengan membawa informasi file data, dan jumlah cluster
+        # print(data.X)
+        # exit()
+        data.run(max_iter)
+        # print("print info:")
+        # data.print_info()
         stop = timeit.default_timer() # catat waktu selesai
-        lama_eksekusi = stop - start # lama eksekusi dalam satuan detik
+        lama_eksekusi = stop - start # mencatat lama eksekusi
         print("Lama eksekusi: ",lama_eksekusi,"detik\n")
-        nama = str("hasil_eksperimen/SV-K-Modes-output_cluster-"+str(jumlah_cluster)+".xlsx")
-        file_kedua = str("hasil_eksperimen/SV-K-Modes-InfoTambahan_fold-"+str(item+1)+"_cluster-"+str(jumlah_cluster)+".xlsx")
-        # nama = str("SVKModes-output_datatoy_"+str(jumlah_cluster)+"-cluster.xlsx")
-        # file_kedua = str("SVKModes-InfoTambahan_datatoy_"+str(jumlah_cluster)+"-cluster.xlsx")
-        data.to_excel(nama, file_kedua)
+        path_output = str("hasil_eksperimen/datatoy/cluster_"+str(jumlah_cluster))
+        nama_file_output = str("SVKM_c"+str(jumlah_cluster)+"_i"+str(max_iter)+".xlsx")
+        data.save_data(path_output, nama_file_output, max_iter)

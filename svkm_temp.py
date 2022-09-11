@@ -416,11 +416,14 @@ class SVKModes:
         val = list(self.centers_and_member.values())
         workbook = xlsxwriter.Workbook(nama_file)
         worksheet = workbook.add_worksheet()
+        container = list(self.F_aksen.values())
         for item in range(len(self.X)):
             worksheet.write(item+1,0,item)
-        for number_iter in range(len(val)):
+        for number_iter in range(len(container)):
             worksheet.write(0,number_iter+1,number_iter)
         worksheet.write(0,number_iter+2,number_iter+1)
+        # workbook.close()
+        # exit()
         j = 0
         for i in val:
             for obj in range(len(self.X)):
@@ -434,12 +437,15 @@ class SVKModes:
                     n += 1
             j += 1
         val_last = val[len(val)-1]
-        for obj in range(len(self.X)):
-            n = 0
-            for item in val_last:
-                if obj+1 in item:
-                    worksheet.write(obj+1,j+1,n)
-                n += 1
+        lenval = len(val)-1
+        while j <= len(container):
+            for obj in range(len(self.X)):
+                n = 0
+                for item in val_last:
+                    if obj+1 in item:
+                        worksheet.write(obj+1,j+1,n)
+                    n += 1
+            j += 1
         # worksheet2 = workbook.add_worksheet("iterasi 2")
         # worksheet2.write(0,0,"i can do it")
         workbook.close()
@@ -523,7 +529,7 @@ for item in range(1):
     nama_file = "dataset/data_item_train"+str(item+1)+"_cb.xlsx"
     # nama_file = "toydata.xlsx"               # bentuk data file excel yg berisi 2 kolom, kolom = A id buku, kolom B = daftar keyword yang dipisahkan dengan tanda koma. toy data ukuran 9*2
     print("\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nNama File:",nama_file)
-    clust = [3,19]
+    clust = [19]
     for i in clust:
         start = timeit.default_timer()
         jumlah_cluster = i                          # variabel untuk menampung jumlah cluster 
